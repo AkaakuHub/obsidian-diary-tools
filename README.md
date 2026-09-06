@@ -49,7 +49,9 @@ pnpm install
 pnpm build
 ```
 
-生成された`main.js`、`manifest.json`、`styles.css`（使用する場合）をVaultの`.obsidian/plugins/diary-tasks/`へ配置します。開発中は`pnpm dev`を使えます。
+生成されたルートの`main.js`、`manifest.json`、`styles.css`（使用する場合）をVaultの`.obsidian/plugins/diary-tasks/`へ配置します。`main.js`はObsidianがプラグインのエントリーポイントとして読むため、リポジトリ直下に生成されます。`dist/main.js`はビルド確認用の出力です。
+
+ローカルで使う場合は、開発用Vaultの`.obsidian/plugins/diary-tasks/`へこのリポジトリを配置し、リポジトリのディレクトリで`pnpm install`と`pnpm dev`を実行します。Obsidianの設定でコミュニティプラグインを有効にし、インストール済みプラグインの`Diary Tasks`を有効にしてください。ソースを変更した後は、コマンドパレットの`保存せずにアプリを再読み込み`で反映します。
 
 検査:
 

@@ -11,10 +11,11 @@ export default defineConfig({
     },
   ],
   build: {
+    target: "es2021",
     lib: {
       entry: "src/main.ts",
       fileName: () => "main.js",
-      formats: ["es"],
+      formats: ["cjs"],
     },
     emptyOutDir: true,
     outDir: "dist",
