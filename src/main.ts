@@ -116,7 +116,7 @@ export default class DiaryPlugin extends Plugin {
 
   private scheduleNextRollover(): void {
     if (this.rolloverTimeoutId !== null) {
-      window.clearTimeout(this.rolloverTimeoutId);
+      return;
     }
 
     this.rolloverTimeoutId = window.setTimeout(() => {
@@ -131,16 +131,11 @@ export default class DiaryPlugin extends Plugin {
       return;
     }
     this.isMonitoringStarted = true;
-    this.registerDomEvent(window, "focus", () => {
-      this.runRolloverIfNeeded();
-      this.scheduleNextRollover();
-    });
     this.registerDomEvent(document, "visibilitychange", () => {
       if (document.visibilityState !== "visible") {
         return;
       }
       this.runRolloverIfNeeded();
-      this.scheduleNextRollover();
     });
     this.runRolloverIfNeeded();
     this.scheduleNextRollover();
