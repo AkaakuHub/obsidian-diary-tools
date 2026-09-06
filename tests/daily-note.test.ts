@@ -18,7 +18,7 @@ describe("projectDailyNote", () => {
     const result = projectDailyNote(source);
 
     expect(result.sourceContent).toBe(
-      ["# 日記", "", "説明は当日に残す。", "", "- [ ] root", "\t- [x] suba", "", "- [x] done"].join(
+      ["# 日記", "", "説明は当日に残す。", "", "- [x] root", "\t- [x] suba", "", "- [x] done"].join(
         "\n",
       ),
     );
@@ -43,6 +43,13 @@ describe("projectDailyNote", () => {
 
     expect(result.sourceContent).toBe("- [ ] root\n\t- [x] child");
     expect(result.carryoverContent).toBe("- [ ] root");
+  });
+
+  it("marks a mixed parent complete in the source while carrying it as unfinished", () => {
+    const result = projectDailyNote("- [ ] root\n\t- [x] done\n\t- [ ] pending");
+
+    expect(result.sourceContent).toBe("- [x] root\n\t- [x] done");
+    expect(result.carryoverContent).toBe("- [ ] root\n\t- [ ] pending");
   });
 
   it("keeps blank lines between carried tasks in the same section", () => {

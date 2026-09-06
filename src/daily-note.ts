@@ -41,15 +41,34 @@ export function composeDailyNote(templateContent: string, projection: DailyNoteP
 
 function projectTaskLines(lines: string[]): Omit<DailyNoteProjection, "sections"> {
   const taskNodes = parseTaskNodes(lines);
-  const sourceLines = lines.filter(
-    (_, index) => !taskNodes.has(index) || Boolean(taskNodes.get(index)?.keepInSource),
-  );
+  const sourceLines = lines.flatMap((line, index) => {
+    const taskNode = taskNodes.get(index);
+    if (taskNode && !taskNode.keepInSource) {
+      return [];
+    }
+    if (taskNode && shouldMarkSourceTaskComplete(taskNode)) {
+      return [markTaskComplete(line)];
+    }
+    return [line];
+  });
   const carryoverLines = getCarryoverLines(lines, taskNodes);
 
   return {
     carryoverContent: carryoverLines.join("\n"),
     sourceContent: sourceLines.join("\n"),
   };
+}
+
+function shouldMarkSourceTaskComplete(taskNode: TodoNode): boolean {
+  return (
+    taskNode.status === "pending" &&
+    taskNode.children.some((child) => child.keepInSource) &&
+    taskNode.children.some((child) => child.keepInCarryover)
+  );
+}
+
+function markTaskComplete(line: string): string {
+  return line.replace(/^([ \t]*[-*+]\s+\[)[ xX-](\])/u, "$1x$2");
 }
 
 function getCarryoverLines(lines: string[], taskNodes: Map<number, TodoNode>): string[] {
