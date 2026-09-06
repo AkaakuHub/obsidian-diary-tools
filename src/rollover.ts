@@ -114,7 +114,7 @@ export async function rollDiaryForward(
     const projection = projectDailyNote(sourceContent);
     const templateContent = await readTemplate(vault, normalizedSettings);
     await ensureParentFolders(vault, targetPath);
-    let targetContent = composeDailyNote(templateContent, projection.carryoverContent);
+    let targetContent = composeDailyNote(templateContent, projection);
     const createdTarget = await vault.create(targetPath, targetContent);
     let concurrentSourceContent: string | null = null;
     await vault.process(source.file, (currentContent) => {
@@ -127,7 +127,7 @@ export async function rollDiaryForward(
 
     if (concurrentSourceContent !== null) {
       const concurrentProjection = projectDailyNote(concurrentSourceContent);
-      targetContent = composeDailyNote(templateContent, concurrentProjection.carryoverContent);
+      targetContent = composeDailyNote(templateContent, concurrentProjection);
       await vault.process(createdTarget, () => targetContent);
     }
     state.generatedNotes[targetPath] = await getGeneratedNoteMetadata(targetContent);

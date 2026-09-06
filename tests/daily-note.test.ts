@@ -37,14 +37,56 @@ describe("projectDailyNote", () => {
 
     expect(result.carryoverContent).toBe("- [ ] root\n\t- [ ] first\n\t- [ ] second");
   });
+
+  it("carries an unfinished parent even when all children are complete", () => {
+    const result = projectDailyNote("- [ ] root\n\t- [x] child");
+
+    expect(result.sourceContent).toBe("- [ ] root\n\t- [x] child");
+    expect(result.carryoverContent).toBe("- [ ] root");
+  });
 });
 
 describe("composeDailyNote", () => {
-  it("appends carryover tasks to the template", () => {
-    expect(composeDailyNote("# 日記\n", "- [ ] task")).toBe("# 日記\n\n- [ ] task\n");
-  });
+  it("places each section at its matching template marker", () => {
+    const projection = projectDailyNote(
+      [
+        "# 日記",
+        "前日のメモ",
+        "",
+        "---",
+        "# 絶対今日",
+        "- [x] 完了",
+        "- [ ] 今日のTODO",
+        "",
+        "---",
+        "# TODO",
+        "- [x] 完了",
+        "- [ ] 継続するTODO",
+      ].join("\n"),
+    );
 
-  it("does not change a template when there is no carryover", () => {
-    expect(composeDailyNote("# 日記\n", "")).toBe("# 日記\n");
+    const template = [
+      "# 日記",
+      "<!-- diary -->",
+      "---",
+      "# 絶対に今日",
+      "<!-- todo-today -->",
+      "---",
+      "# TODO",
+      "<!-- todo -->",
+    ].join("\n");
+
+    expect(composeDailyNote(template, projection)).toBe(
+      [
+        "# 日記",
+        "前日のメモ",
+        "---",
+        "# 絶対に今日",
+        "- [ ] 今日のTODO",
+        "---",
+        "# TODO",
+        "- [ ] 継続するTODO",
+      ].join("\n"),
+    );
   });
 });

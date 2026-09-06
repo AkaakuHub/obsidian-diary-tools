@@ -1,6 +1,13 @@
 export interface DailyNoteProjection {
   carryoverContent: string;
   sourceContent: string;
+  sections: DailyNoteSections;
+}
+
+export interface DailyNoteSections {
+  diary: string;
+  todo: string;
+  todoToday: string;
 }
 
 type TodoStatus = "cancelled" | "done" | "pending";
@@ -17,6 +24,22 @@ const TODO_LINE_PATTERN = /^([ \t]*)[-*+]\s+\[([ xX-])\](.*)$/u;
 
 export function projectDailyNote(content: string): DailyNoteProjection {
   const lines = content.split(/\r?\n/u);
+  const projection = projectTaskLines(lines);
+
+  return {
+    ...projection,
+    sections: projectSections(lines),
+  };
+}
+
+export function composeDailyNote(templateContent: string, projection: DailyNoteProjection): string {
+  return templateContent
+    .replaceAll("<!-- diary -->", projection.sections.diary)
+    .replaceAll("<!-- todo-today -->", projection.sections.todoToday)
+    .replaceAll("<!-- todo -->", projection.sections.todo);
+}
+
+function projectTaskLines(lines: string[]): Omit<DailyNoteProjection, "sections"> {
   const taskNodes = parseTaskNodes(lines);
   const sourceLines = lines.filter(
     (_, index) => !taskNodes.has(index) || Boolean(taskNodes.get(index)?.keepInSource),
@@ -29,14 +52,69 @@ export function projectDailyNote(content: string): DailyNoteProjection {
   };
 }
 
-export function composeDailyNote(templateContent: string, carryoverContent: string): string {
-  const carryover = carryoverContent.trim();
-  if (!carryover) {
-    return templateContent;
-  }
+function projectSections(lines: string[]): DailyNoteSections {
+  const sections = extractSections(lines);
+  return {
+    diary: cleanDiaryContent(sections.diary),
+    todo: projectTaskLines(sections.todo.split(/\r?\n/u)).carryoverContent.trim(),
+    todoToday: projectTaskLines(sections.todoToday.split(/\r?\n/u)).carryoverContent.trim(),
+  };
+}
 
-  const template = templateContent.trimEnd();
-  return template ? `${template}\n\n${carryover}\n` : `${carryover}\n`;
+function extractSections(lines: string[]): Record<keyof DailyNoteSections, string> {
+  const sectionLines: Record<keyof DailyNoteSections, string[]> = {
+    diary: [],
+    todo: [],
+    todoToday: [],
+  };
+  let currentSection: keyof DailyNoteSections | null = null;
+
+  lines.forEach((line) => {
+    const heading = /^(#)\s+(.+?)\s*$/u.exec(line);
+    if (heading) {
+      currentSection = getSectionKey(heading[2]);
+      return;
+    }
+    if (currentSection) {
+      sectionLines[currentSection].push(line);
+    }
+  });
+
+  return {
+    diary: sectionLines.diary.join("\n"),
+    todo: sectionLines.todo.join("\n"),
+    todoToday: sectionLines.todoToday.join("\n"),
+  };
+}
+
+function getSectionKey(heading: string): keyof DailyNoteSections | null {
+  const normalizedHeading = heading.trim().replaceAll(/\s+/gu, "");
+  if (normalizedHeading === "日記") {
+    return "diary";
+  }
+  if (normalizedHeading === "絶対今日" || normalizedHeading === "絶対に今日") {
+    return "todoToday";
+  }
+  if (normalizedHeading.toUpperCase() === "TODO") {
+    return "todo";
+  }
+  return null;
+}
+
+function cleanDiaryContent(content: string): string {
+  return content
+    .split(/\r?\n/u)
+    .filter((line) => !isDynamicMarker(line))
+    .join("\n")
+    .replace(/\n---\s*$/u, "")
+    .trim();
+}
+
+function isDynamicMarker(line: string): boolean {
+  const marker = line.trim();
+  return (
+    marker === "<!-- diary -->" || marker === "<!-- todo-today -->" || marker === "<!-- todo -->"
+  );
 }
 
 function parseTaskNodes(lines: string[]): Map<number, TodoNode> {

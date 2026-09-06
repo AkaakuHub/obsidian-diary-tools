@@ -128,8 +128,8 @@ describe("rollDiaryForward", () => {
     const vault = new MemoryVault();
     const fileManager = new MemoryFileManager(vault);
     const state: DiaryRolloverState = { generatedNotes: {} };
-    vault.seed("diary/template.md", "");
-    vault.seed("diary/2026-9/2026-09-01.md", "- [ ] task\n- [x] done");
+    vault.seed("diary/template.md", "<!-- todo -->");
+    vault.seed("diary/2026-9/2026-09-01.md", "# TODO\n\n- [ ] task\n- [x] done");
 
     const result = await rollDiaryForward(
       vault,
@@ -140,8 +140,8 @@ describe("rollDiaryForward", () => {
     );
 
     expect(result).toEqual({ changed: true, createdCount: 1, renamedCount: 0 });
-    expect(vault.content("diary/2026-9/2026-09-01.md")).toBe("- [x] done");
-    expect(vault.content("diary/2026-9/2026-09-02.md")).toBe("- [ ] task\n");
+    expect(vault.content("diary/2026-9/2026-09-01.md")).toBe("# TODO\n\n- [x] done");
+    expect(vault.content("diary/2026-9/2026-09-02.md")).toBe("- [ ] task");
     expect(state.generatedNotes["diary/2026-9/2026-09-02.md"]).toBeDefined();
 
     const repeatedResult = await rollDiaryForward(
@@ -153,15 +153,15 @@ describe("rollDiaryForward", () => {
     );
 
     expect(repeatedResult).toEqual({ changed: false, createdCount: 0, renamedCount: 0 });
-    expect(vault.content("diary/2026-9/2026-09-02.md")).toBe("- [ ] task\n");
+    expect(vault.content("diary/2026-9/2026-09-02.md")).toBe("- [ ] task");
   });
 
   it("renames an untouched generated note instead of creating a blank note", async () => {
     const vault = new MemoryVault();
     const fileManager = new MemoryFileManager(vault);
     const state: DiaryRolloverState = { generatedNotes: {} };
-    vault.seed("diary/template.md", "");
-    vault.seed("diary/2026-9/2026-09-01.md", "- [ ] task");
+    vault.seed("diary/template.md", "<!-- todo -->");
+    vault.seed("diary/2026-9/2026-09-01.md", "# TODO\n\n- [ ] task");
 
     await rollDiaryForward(
       vault,
@@ -183,15 +183,15 @@ describe("rollDiaryForward", () => {
       "diary/2026-9/2026-09-02.md->diary/2026-9/2026-09-03.md",
     ]);
     expect(vault.getAbstractFileByPath("diary/2026-9/2026-09-02.md")).toBeNull();
-    expect(vault.content("diary/2026-9/2026-09-03.md")).toBe("- [ ] task\n");
+    expect(vault.content("diary/2026-9/2026-09-03.md")).toBe("- [ ] task");
   });
 
   it("creates a new note after a generated note is edited", async () => {
     const vault = new MemoryVault();
     const fileManager = new MemoryFileManager(vault);
     const state: DiaryRolloverState = { generatedNotes: {} };
-    vault.seed("diary/template.md", "");
-    vault.seed("diary/2026-9/2026-09-01.md", "- [ ] task");
+    vault.seed("diary/template.md", "<!-- todo -->");
+    vault.seed("diary/2026-9/2026-09-01.md", "# TODO\n\n- [ ] task");
 
     await rollDiaryForward(
       vault,
