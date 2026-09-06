@@ -79,7 +79,7 @@ describe("composeDailyNote", () => {
     expect(composeDailyNote(template, projection)).toBe(
       [
         "# 日記",
-        "前日のメモ",
+        "",
         "---",
         "# 絶対に今日",
         "- [ ] 今日のTODO",

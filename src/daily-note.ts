@@ -55,19 +55,20 @@ function projectTaskLines(lines: string[]): Omit<DailyNoteProjection, "sections"
 function projectSections(lines: string[]): DailyNoteSections {
   const sections = extractSections(lines);
   return {
-    diary: cleanDiaryContent(sections.diary),
+    diary: "",
     todo: projectTaskLines(sections.todo.split(/\r?\n/u)).carryoverContent.trim(),
     todoToday: projectTaskLines(sections.todoToday.split(/\r?\n/u)).carryoverContent.trim(),
   };
 }
 
-function extractSections(lines: string[]): Record<keyof DailyNoteSections, string> {
-  const sectionLines: Record<keyof DailyNoteSections, string[]> = {
-    diary: [],
+type TodoSectionKey = "todo" | "todoToday";
+
+function extractSections(lines: string[]): Record<TodoSectionKey, string> {
+  const sectionLines: Record<TodoSectionKey, string[]> = {
     todo: [],
     todoToday: [],
   };
-  let currentSection: keyof DailyNoteSections | null = null;
+  let currentSection: TodoSectionKey | null = null;
 
   lines.forEach((line) => {
     const heading = /^(#)\s+(.+?)\s*$/u.exec(line);
@@ -81,17 +82,13 @@ function extractSections(lines: string[]): Record<keyof DailyNoteSections, strin
   });
 
   return {
-    diary: sectionLines.diary.join("\n"),
     todo: sectionLines.todo.join("\n"),
     todoToday: sectionLines.todoToday.join("\n"),
   };
 }
 
-function getSectionKey(heading: string): keyof DailyNoteSections | null {
+function getSectionKey(heading: string): TodoSectionKey | null {
   const normalizedHeading = heading.trim().replaceAll(/\s+/gu, "");
-  if (normalizedHeading === "日記") {
-    return "diary";
-  }
   if (normalizedHeading === "絶対今日" || normalizedHeading === "絶対に今日") {
     return "todoToday";
   }
@@ -99,22 +96,6 @@ function getSectionKey(heading: string): keyof DailyNoteSections | null {
     return "todo";
   }
   return null;
-}
-
-function cleanDiaryContent(content: string): string {
-  return content
-    .split(/\r?\n/u)
-    .filter((line) => !isDynamicMarker(line))
-    .join("\n")
-    .replace(/\n---\s*$/u, "")
-    .trim();
-}
-
-function isDynamicMarker(line: string): boolean {
-  const marker = line.trim();
-  return (
-    marker === "<!-- diary -->" || marker === "<!-- todo-today -->" || marker === "<!-- todo -->"
-  );
 }
 
 function parseTaskNodes(lines: string[]): Map<number, TodoNode> {
