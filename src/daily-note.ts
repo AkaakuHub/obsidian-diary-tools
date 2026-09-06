@@ -44,12 +44,36 @@ function projectTaskLines(lines: string[]): Omit<DailyNoteProjection, "sections"
   const sourceLines = lines.filter(
     (_, index) => !taskNodes.has(index) || Boolean(taskNodes.get(index)?.keepInSource),
   );
-  const carryoverLines = lines.filter((_, index) => Boolean(taskNodes.get(index)?.keepInCarryover));
+  const carryoverLines = getCarryoverLines(lines, taskNodes);
 
   return {
     carryoverContent: carryoverLines.join("\n"),
     sourceContent: sourceLines.join("\n"),
   };
+}
+
+function getCarryoverLines(lines: string[], taskNodes: Map<number, TodoNode>): string[] {
+  const carryoverFlags = lines.map((_, index) => Boolean(taskNodes.get(index)?.keepInCarryover));
+  const hasCarryoverBefore = Array.from({ length: lines.length }, () => false);
+  const hasCarryoverAfter = Array.from({ length: lines.length }, () => false);
+
+  let carryoverBefore = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    hasCarryoverBefore[index] = carryoverBefore;
+    carryoverBefore ||= carryoverFlags[index];
+  }
+
+  let carryoverAfter = false;
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    hasCarryoverAfter[index] = carryoverAfter;
+    carryoverAfter ||= carryoverFlags[index];
+  }
+
+  return lines.filter(
+    (line, index) =>
+      carryoverFlags[index] ||
+      (line.trim() === "" && hasCarryoverBefore[index] && hasCarryoverAfter[index]),
+  );
 }
 
 function projectSections(lines: string[]): DailyNoteSections {

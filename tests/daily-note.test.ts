@@ -44,6 +44,12 @@ describe("projectDailyNote", () => {
     expect(result.sourceContent).toBe("- [ ] root\n\t- [x] child");
     expect(result.carryoverContent).toBe("- [ ] root");
   });
+
+  it("keeps blank lines between carried tasks in the same section", () => {
+    const result = projectDailyNote("# TODO\n- [ ] aaa\n\n- [ ] bbb");
+
+    expect(result.sections.todo).toBe("- [ ] aaa\n\n- [ ] bbb");
+  });
 });
 
 describe("composeDailyNote", () => {
