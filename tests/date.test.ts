@@ -2,20 +2,21 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   dailyNotePath,
-  getMillisecondsUntilNextJapanDay,
-  getTodayInJapan,
+  getMillisecondsUntilNextDay,
+  getToday,
   parseDailyNoteDate,
 } from "../src/date";
 
 describe("date helpers", () => {
-  it("formats the date using Japan time", () => {
-    expect(getTodayInJapan(new Date("2026-08-25T15:00:00.000Z"))).toBe("2026-08-26");
+  it("formats the date using the local time zone", () => {
+    expect(getToday(new Date(2026, 7, 25, 12))).toBe("2026-08-25");
   });
 
-  it("calculates the delay until the next Japan midnight", () => {
-    expect(getMillisecondsUntilNextJapanDay(new Date("2026-08-25T14:59:59.000Z"))).toBe(1000);
-    expect(getMillisecondsUntilNextJapanDay(new Date("2026-08-25T15:00:00.000Z"))).toBe(
-      24 * 60 * 60 * 1000,
+  it("calculates the delay until the next local midnight", () => {
+    const beforeMidnight = new Date(2026, 7, 25, 23, 59, 59);
+    const nextMidnight = new Date(2026, 7, 26);
+    expect(getMillisecondsUntilNextDay(beforeMidnight)).toBe(
+      nextMidnight.getTime() - beforeMidnight.getTime(),
     );
   });
 

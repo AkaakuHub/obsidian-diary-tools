@@ -3,7 +3,7 @@
   "name": "Diary Tasks",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Create daily notes in Japan time and carry unfinished hierarchical tasks into the next day.",
+  "description": "Create daily notes in the local time zone and carry unfinished hierarchical tasks into the next day.",
   "author": "Akaaku",
   "isDesktopOnly": false
 }

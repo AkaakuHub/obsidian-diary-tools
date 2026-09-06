@@ -121,7 +121,7 @@ class MemoryFileManager implements FileManagerGateway {
   }
 }
 
-const settings: DiarySettings = { diaryFolder: "diary", templatePath: "" };
+const settings: DiarySettings = { diaryFolder: "diary", setupCompleted: true, templatePath: "" };
 
 describe("rollDiaryForward", () => {
   it("creates the next note and records the generated file", async () => {

@@ -4,7 +4,7 @@ import {
   addDays,
   compareDateKeys,
   dailyNotePath,
-  getTodayInJapan,
+  getToday,
   parseDailyNoteDate,
   type DateKey,
 } from "./date";
@@ -43,7 +43,7 @@ export async function rollDiaryForward(
   state: DiaryRolloverState,
   now = new Date(),
 ): Promise<RolloverResult> {
-  const today = getTodayInJapan(now);
+  const today = getToday(now);
   const diaryFolder = normalizePath(settings.diaryFolder);
   const normalizedSettings = { ...settings, diaryFolder };
   const latest = findLatestDailyFile(vault, diaryFolder, today);

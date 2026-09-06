@@ -1,5 +1,6 @@
 export interface DiarySettings {
   diaryFolder: string;
+  setupCompleted: boolean;
   templatePath: string;
 }
 
@@ -13,6 +14,7 @@ export interface DiaryRolloverState {
 
 export const DEFAULT_SETTINGS: DiarySettings = {
   diaryFolder: "diary",
+  setupCompleted: false,
   templatePath: "",
 };
 
@@ -26,6 +28,7 @@ export function loadDiarySettings(data: unknown): DiarySettings {
       typeof data.diaryFolder === "string" && data.diaryFolder.trim()
         ? data.diaryFolder
         : DEFAULT_SETTINGS.diaryFolder,
+    setupCompleted: data.setupCompleted === true,
     templatePath:
       typeof data.templatePath === "string" ? data.templatePath : DEFAULT_SETTINGS.templatePath,
   };

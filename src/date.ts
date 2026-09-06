@@ -1,25 +1,22 @@
 export type DateKey = `${number}-${number}-${number}`;
 
-const JAPAN_TIME_ZONE = "Asia/Tokyo";
-
-const japanDateFormatter = new Intl.DateTimeFormat("en-US", {
+const localDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "2-digit",
   month: "2-digit",
-  timeZone: JAPAN_TIME_ZONE,
   year: "numeric",
 });
 
-export function getTodayInJapan(now = new Date()): DateKey {
-  const parts = japanDateFormatter.formatToParts(now);
+export function getToday(now = new Date()): DateKey {
+  const parts = localDateFormatter.formatToParts(now);
   const year = Number(parts.find((part) => part.type === "year")?.value);
   const month = Number(parts.find((part) => part.type === "month")?.value);
   const day = Number(parts.find((part) => part.type === "day")?.value);
   return formatDateKey(year, month, day);
 }
 
-export function getMillisecondsUntilNextJapanDay(now = new Date()): number {
-  const nextDate = addDays(getTodayInJapan(now), 1);
-  const nextMidnight = new Date(`${nextDate}T00:00:00+09:00`);
+export function getMillisecondsUntilNextDay(now = new Date()): number {
+  const [year, month, day] = addDays(getToday(now), 1).split("-").map(Number);
+  const nextMidnight = new Date(year, month - 1, day);
   return nextMidnight.getTime() - now.getTime();
 }
 
