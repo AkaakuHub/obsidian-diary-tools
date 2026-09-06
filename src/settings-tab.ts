@@ -26,20 +26,5 @@ export class DiarySettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }),
       );
-
-    new Setting(containerEl)
-      .setName("テンプレートファイル")
-      .setDesc(
-        "Vault内のMarkdownファイルのパスです。空欄なら日記フォルダ直下のtemplate.mdを使います。",
-      )
-      .addText((text) =>
-        text
-          .setPlaceholder("diary/template.md")
-          .setValue(this.plugin.diarySettings.templatePath)
-          .onChange(async (value) => {
-            this.plugin.diarySettings.templatePath = normalizePath(value.trim());
-            await this.plugin.saveSettings();
-          }),
-      );
   }
 }

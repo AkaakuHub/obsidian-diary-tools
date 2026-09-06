@@ -1,6 +1,6 @@
-import { Notice, Plugin } from "obsidian";
+import { normalizePath, Notice, Plugin } from "obsidian";
 import { getMillisecondsUntilNextDay, getToday, type DateKey } from "./date";
-import { rollDiaryForward } from "./rollover";
+import { ensureDiaryTemplate, rollDiaryForward } from "./rollover";
 import {
   loadDiaryRolloverState,
   loadDiarySettings,
@@ -161,6 +161,7 @@ export default class DiaryPlugin extends Plugin {
           setupCompleted: true,
         };
         try {
+          await ensureDiaryTemplate(this.app.vault, diaryFolder, await this.readTemplateSource());
           await this.saveSettings();
         } catch (error) {
           this.diarySettings = previousSettings;
@@ -173,5 +174,13 @@ export default class DiaryPlugin extends Plugin {
       },
     );
     this.setupModal.open();
+  }
+
+  private async readTemplateSource(): Promise<string> {
+    const pluginDirectory = this.manifest.dir;
+    if (!pluginDirectory) {
+      throw new Error("テンプレートを読み込めません。プラグインディレクトリが不明です。");
+    }
+    return this.app.vault.adapter.read(`${normalizePath(pluginDirectory)}/template.md`);
   }
 }

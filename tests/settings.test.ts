@@ -11,12 +11,10 @@ describe("diary settings", () => {
       loadDiarySettings({
         diaryFolder: "notes",
         setupCompleted: true,
-        templatePath: "notes/template.md",
       }),
     ).toEqual({
       diaryFolder: "notes",
       setupCompleted: true,
-      templatePath: "notes/template.md",
     });
   });
 });

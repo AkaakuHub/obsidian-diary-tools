@@ -36,6 +36,23 @@ export interface FileManagerGateway {
   renameFile(file: TAbstractFile, newPath: string): Promise<void>;
 }
 
+export async function ensureDiaryTemplate(
+  vault: VaultGateway,
+  diaryFolder: string,
+  templateContent: string,
+): Promise<void> {
+  const templatePath = getDefaultTemplatePath(diaryFolder);
+  const template = vault.getAbstractFileByPath(templatePath);
+  if (template) {
+    if (!(template instanceof TFile)) {
+      throw new Error(`テンプレートの場所にファイル以外があります: ${templatePath}`);
+    }
+    return;
+  }
+  await ensureParentFolders(vault, templatePath);
+  await vault.create(templatePath, templateContent);
+}
+
 export async function rollDiaryForward(
   vault: VaultGateway,
   fileManager: FileManagerGateway,
@@ -141,12 +158,8 @@ function findLatestDailyFile(
 }
 
 async function readTemplate(vault: VaultGateway, settings: DiarySettings): Promise<string> {
-  const configuredPath = normalizePath(settings.templatePath.trim());
-  const path = configuredPath || getDefaultTemplatePath(settings.diaryFolder);
+  const path = getDefaultTemplatePath(settings.diaryFolder);
   const template = vault.getAbstractFileByPath(path);
-  if (!template && !configuredPath) {
-    return "";
-  }
   if (!(template instanceof TFile)) {
     throw new Error(`テンプレートが見つかりません: ${path}`);
   }
@@ -154,7 +167,8 @@ async function readTemplate(vault: VaultGateway, settings: DiarySettings): Promi
 }
 
 function getDefaultTemplatePath(diaryFolder: string): string {
-  const root = normalizePath(diaryFolder.trim());
+  const trimmedFolder = diaryFolder.trim();
+  const root = trimmedFolder ? normalizePath(trimmedFolder) : "";
   return root ? `${root}/template.md` : "template.md";
 }
 

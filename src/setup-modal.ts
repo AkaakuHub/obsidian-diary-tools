@@ -1,4 +1,4 @@
-import { Modal, normalizePath, Notice, Setting, type App } from "obsidian";
+import { Modal, Notice, Setting, type App } from "obsidian";
 import { DiaryFolderModal } from "./folder-modal";
 
 type StartSetup = (diaryFolder: string) => Promise<void>;
@@ -22,26 +22,13 @@ export class DiarySetupModal extends Modal {
     });
 
     let diaryFolder = "";
-    let setFolderInput = (value: string): void => {
-      diaryFolder = value;
-    };
-    new Setting(contentEl)
-      .setName("日記ディレクトリ")
-      .setDesc("Vault内のフォルダパスを入力してください。")
-      .addText((text) => {
-        setFolderInput = (value) => {
-          diaryFolder = value;
-          text.setValue(value);
-        };
-        text.setPlaceholder("diary").onChange((value) => {
-          diaryFolder = value;
-        });
-      });
+    const selectedFolder = contentEl.createEl("p", { text: "未選択" });
 
     new Setting(contentEl).addButton((button) =>
       button.setButtonText("フォルダを選択").onClick(() => {
         new DiaryFolderModal(this.app, (folderPath) => {
-          setFolderInput(folderPath);
+          diaryFolder = folderPath;
+          selectedFolder.setText(folderPath);
         }).open();
       }),
     );
@@ -51,15 +38,14 @@ export class DiarySetupModal extends Modal {
         .setButtonText("開始")
         .setCta()
         .onClick(async () => {
-          const normalizedFolder = normalizePath(diaryFolder.trim());
-          if (!normalizedFolder) {
-            new Notice("日記ディレクトリを入力してください。");
+          if (!diaryFolder) {
+            new Notice("日記ディレクトリを選択してください。");
             return;
           }
 
           button.setDisabled(true);
           try {
-            await this.startSetup(normalizedFolder);
+            await this.startSetup(diaryFolder);
             this.close();
           } catch (error) {
             button.setDisabled(false);
