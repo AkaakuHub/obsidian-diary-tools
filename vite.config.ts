@@ -1,15 +1,6 @@
-import { copyFileSync } from "node:fs";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  plugins: [
-    {
-      name: "copy-obsidian-entrypoint",
-      closeBundle() {
-        copyFileSync("dist/main.js", "main.js");
-      },
-    },
-  ],
   build: {
     target: "es2021",
     lib: {
