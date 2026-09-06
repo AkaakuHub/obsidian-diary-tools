@@ -60,11 +60,7 @@ function projectTaskLines(lines: string[]): Omit<DailyNoteProjection, "sections"
 }
 
 function shouldMarkSourceTaskComplete(taskNode: TodoNode): boolean {
-  return (
-    taskNode.status === "pending" &&
-    taskNode.children.some((child) => child.keepInSource) &&
-    taskNode.children.some((child) => child.keepInCarryover)
-  );
+  return taskNode.status === "pending" && taskNode.keepInSource && taskNode.keepInCarryover;
 }
 
 function markTaskComplete(line: string): string {

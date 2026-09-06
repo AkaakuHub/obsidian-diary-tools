@@ -41,7 +41,7 @@ describe("projectDailyNote", () => {
   it("carries an unfinished parent even when all children are complete", () => {
     const result = projectDailyNote("- [ ] root\n\t- [x] child");
 
-    expect(result.sourceContent).toBe("- [ ] root\n\t- [x] child");
+    expect(result.sourceContent).toBe("- [x] root\n\t- [x] child");
     expect(result.carryoverContent).toBe("- [ ] root");
   });
 
@@ -50,6 +50,21 @@ describe("projectDailyNote", () => {
 
     expect(result.sourceContent).toBe("- [x] root\n\t- [x] done");
     expect(result.carryoverContent).toBe("- [ ] root\n\t- [ ] pending");
+  });
+
+  it("marks every carried parent complete through nested branches", () => {
+    const result = projectDailyNote(
+      ["- [ ] root", "\t- [ ] first", "\t\t- [x] done", "\t- [ ] second", "\t\t- [x] done"].join(
+        "\n",
+      ),
+    );
+
+    expect(result.sourceContent).toBe(
+      ["- [x] root", "\t- [x] first", "\t\t- [x] done", "\t- [x] second", "\t\t- [x] done"].join(
+        "\n",
+      ),
+    );
+    expect(result.carryoverContent).toBe("- [ ] root\n\t- [ ] first\n\t- [ ] second");
   });
 
   it("keeps blank lines between carried tasks in the same section", () => {
