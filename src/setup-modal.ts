@@ -1,4 +1,5 @@
 import { Modal, normalizePath, Notice, Setting, type App } from "obsidian";
+import { DiaryFolderModal } from "./folder-modal";
 
 type StartSetup = (diaryFolder: string) => Promise<void>;
 type CloseSetup = () => void;
@@ -21,14 +22,29 @@ export class DiarySetupModal extends Modal {
     });
 
     let diaryFolder = "";
+    let setFolderInput = (value: string): void => {
+      diaryFolder = value;
+    };
     new Setting(contentEl)
       .setName("日記ディレクトリ")
       .setDesc("Vault内のフォルダパスを入力してください。")
-      .addText((text) =>
+      .addText((text) => {
+        setFolderInput = (value) => {
+          diaryFolder = value;
+          text.setValue(value);
+        };
         text.setPlaceholder("diary").onChange((value) => {
           diaryFolder = value;
-        }),
-      );
+        });
+      });
+
+    new Setting(contentEl).addButton((button) =>
+      button.setButtonText("フォルダを選択").onClick(() => {
+        new DiaryFolderModal(this.app, (folderPath) => {
+          setFolderInput(folderPath);
+        }).open();
+      }),
+    );
 
     new Setting(contentEl).addButton((button) =>
       button
