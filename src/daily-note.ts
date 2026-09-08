@@ -1,5 +1,4 @@
 export interface DailyNoteProjection {
-  carryoverContent: string;
   sourceContent: string;
   sections: DailyNoteSections;
 }
@@ -20,28 +19,76 @@ interface TodoNode {
   keepInSource: boolean;
 }
 
+interface TaskProjection {
+  carryoverContent: string;
+  sourceContent: string;
+}
+
 const TODO_LINE_PATTERN = /^([ \t]*)[-*+]\s+\[([ xX-])\](.*)$/u;
+const TEMPLATE_MARKERS = ["<!-- diary -->", "<!-- todo-today -->", "<!-- todo -->"] as const;
 
 export function projectDailyNote(content: string): DailyNoteProjection {
   const lines = content.split(/\r?\n/u);
-  const projection = projectTaskLines(lines);
 
   return {
-    ...projection,
+    sourceContent: projectSourceContent(lines),
     sections: projectSections(lines),
   };
 }
 
 export function composeDailyNote(templateContent: string, projection: DailyNoteProjection): string {
+  validateTemplateMarkers(templateContent);
   return templateContent
-    .replaceAll("<!-- diary -->", projection.sections.diary)
-    .replaceAll("<!-- todo-today -->", projection.sections.todoToday)
-    .replaceAll("<!-- todo -->", projection.sections.todo);
+    .replace("<!-- diary -->", projection.sections.diary)
+    .replace("<!-- todo-today -->", projection.sections.todoToday)
+    .replace("<!-- todo -->", projection.sections.todo);
 }
 
-function projectTaskLines(lines: string[]): Omit<DailyNoteProjection, "sections"> {
+function validateTemplateMarkers(templateContent: string): void {
+  for (const marker of TEMPLATE_MARKERS) {
+    const markerCount = templateContent.split(marker).length - 1;
+    if (markerCount !== 1) {
+      throw new Error(`テンプレートには${marker}を1つだけ配置してください。`);
+    }
+  }
+}
+
+function projectSourceContent(lines: string[]): string {
+  const sourceLines: string[] = [];
+  let currentSection: TodoSectionKey | null = null;
+  let sectionStart = 0;
+
+  for (let index = 0; index <= lines.length; index += 1) {
+    const heading = index < lines.length ? getHeading(lines[index]) : null;
+    if (index < lines.length && heading === null) {
+      continue;
+    }
+
+    const sectionLines = lines.slice(sectionStart, index);
+    sourceLines.push(...(currentSection ? projectTaskSourceLines(sectionLines) : sectionLines));
+    if (index < lines.length) {
+      sourceLines.push(lines[index]);
+      currentSection = getSectionKey(heading ?? "");
+      sectionStart = index + 1;
+    }
+  }
+
+  return sourceLines.join("\n");
+}
+
+function projectTaskLines(lines: string[]): TaskProjection {
   const taskNodes = parseTaskNodes(lines);
-  const sourceLines = lines.flatMap((line, index) => {
+  const sourceLines = projectTaskSourceLines(lines, taskNodes);
+  const carryoverLines = getCarryoverLines(lines, taskNodes);
+
+  return {
+    carryoverContent: carryoverLines.join("\n"),
+    sourceContent: sourceLines.join("\n"),
+  };
+}
+
+function projectTaskSourceLines(lines: string[], taskNodes = parseTaskNodes(lines)): string[] {
+  return lines.flatMap((line, index) => {
     const taskNode = taskNodes.get(index);
     if (taskNode && !taskNode.keepInSource) {
       return [];
@@ -51,12 +98,6 @@ function projectTaskLines(lines: string[]): Omit<DailyNoteProjection, "sections"
     }
     return [line];
   });
-  const carryoverLines = getCarryoverLines(lines, taskNodes);
-
-  return {
-    carryoverContent: carryoverLines.join("\n"),
-    sourceContent: sourceLines.join("\n"),
-  };
 }
 
 function shouldMarkSourceTaskComplete(taskNode: TodoNode): boolean {
@@ -110,9 +151,9 @@ function extractSections(lines: string[]): Record<TodoSectionKey, string> {
   let currentSection: TodoSectionKey | null = null;
 
   lines.forEach((line) => {
-    const heading = /^(#)\s+(.+?)\s*$/u.exec(line);
-    if (heading) {
-      currentSection = getSectionKey(heading[2]);
+    const heading = getHeading(line);
+    if (heading !== null) {
+      currentSection = getSectionKey(heading);
       return;
     }
     if (currentSection) {
@@ -124,6 +165,10 @@ function extractSections(lines: string[]): Record<TodoSectionKey, string> {
     todo: sectionLines.todo.join("\n"),
     todoToday: sectionLines.todoToday.join("\n"),
   };
+}
+
+function getHeading(line: string): string | null {
+  return /^#\s+(.+?)\s*$/u.exec(line)?.[1] ?? null;
 }
 
 function getSectionKey(heading: string): TodoSectionKey | null {

@@ -12,6 +12,8 @@ import { composeDailyNote, projectDailyNote } from "./daily-note";
 import { getGeneratedNoteMetadata, isGeneratedNoteUnchanged } from "./generated-note";
 import type { DiaryRolloverState, DiarySettings } from "./settings";
 
+const MAX_SOURCE_UPDATE_ATTEMPTS = 3;
+
 interface DailyFile {
   date: DateKey;
   file: TFile;
@@ -75,11 +77,16 @@ export async function rollDiaryForward(
   while (compareDateKeys(source.date, today) < 0) {
     const targetDate = addDays(source.date, 1);
     const targetPath = dailyNotePath(diaryFolder, targetDate);
+    const pendingTargetPath = `${targetPath}.diary-tasks-pending`;
     const existingTarget = vault.getAbstractFileByPath(targetPath);
+    const existingPendingTarget = vault.getAbstractFileByPath(pendingTargetPath);
 
     if (existingTarget) {
       if (!(existingTarget instanceof TFile)) {
         throw new Error(`日記ファイルの場所にファイル以外があります: ${targetPath}`);
+      }
+      if (existingPendingTarget) {
+        throw new Error(`未完了の持ち越しファイルが残っています: ${pendingTargetPath}`);
       }
       if (state.generatedNotes[source.file.path]) {
         delete state.generatedNotes[source.file.path];
@@ -89,9 +96,19 @@ export async function rollDiaryForward(
       continue;
     }
 
+    if (existingPendingTarget && !(existingPendingTarget instanceof TFile)) {
+      throw new Error(
+        `未完了の持ち越しファイルの場所にファイル以外があります: ${pendingTargetPath}`,
+      );
+    }
+
     const generatedMetadata = state.generatedNotes[source.file.path];
     const sourceContent = await vault.read(source.file);
-    if (generatedMetadata && (await isGeneratedNoteUnchanged(sourceContent, generatedMetadata))) {
+    if (
+      !existingPendingTarget &&
+      generatedMetadata &&
+      (await isGeneratedNoteUnchanged(sourceContent, generatedMetadata))
+    ) {
       const oldPath = source.file.path;
       await ensureParentFolders(vault, targetPath);
       await fileManager.renameFile(source.file, targetPath);
@@ -114,21 +131,20 @@ export async function rollDiaryForward(
     const projection = projectDailyNote(sourceContent);
     const templateContent = await readTemplate(vault, normalizedSettings);
     await ensureParentFolders(vault, targetPath);
-    let targetContent = composeDailyNote(templateContent, projection);
-    const createdTarget = await vault.create(targetPath, targetContent);
-    let concurrentSourceContent: string | null = null;
-    await vault.process(source.file, (currentContent) => {
-      if (currentContent !== sourceContent) {
-        concurrentSourceContent = currentContent;
-        return currentContent;
-      }
-      return projection.sourceContent;
-    });
-
-    if (concurrentSourceContent !== null) {
-      const concurrentProjection = projectDailyNote(concurrentSourceContent);
-      targetContent = composeDailyNote(templateContent, concurrentProjection);
-      await vault.process(createdTarget, () => targetContent);
+    const pendingTarget =
+      existingPendingTarget ??
+      (await vault.create(pendingTargetPath, composeDailyNote(templateContent, projection)));
+    const targetContent = await completePendingRollover(
+      vault,
+      fileManager,
+      source.file,
+      pendingTarget,
+      targetPath,
+      templateContent,
+    );
+    const createdTarget = vault.getAbstractFileByPath(targetPath);
+    if (!(createdTarget instanceof TFile)) {
+      throw new Error(`作成した日記を読み込めません: ${targetPath}`);
     }
     state.generatedNotes[targetPath] = await getGeneratedNoteMetadata(targetContent);
     source = { date: targetDate, file: createdTarget };
@@ -137,6 +153,44 @@ export async function rollDiaryForward(
   }
 
   return { changed, createdCount, renamedCount };
+}
+
+async function completePendingRollover(
+  vault: VaultGateway,
+  fileManager: FileManagerGateway,
+  sourceFile: TFile,
+  pendingTarget: TFile,
+  targetPath: string,
+  templateContent: string,
+): Promise<string> {
+  for (let attempt = 0; attempt < MAX_SOURCE_UPDATE_ATTEMPTS; attempt += 1) {
+    const sourceContent = await vault.read(sourceFile);
+    const projection = projectDailyNote(sourceContent);
+    if (sourceContent === projection.sourceContent) {
+      const targetContent = await vault.read(pendingTarget);
+      await fileManager.renameFile(pendingTarget, targetPath);
+      return targetContent;
+    }
+
+    const targetContent = composeDailyNote(templateContent, projection);
+    await vault.process(pendingTarget, () => targetContent);
+    let sourceChanged = false;
+    await vault.process(sourceFile, (currentContent) => {
+      if (currentContent !== sourceContent) {
+        sourceChanged = true;
+        return currentContent;
+      }
+      return projection.sourceContent;
+    });
+    if (sourceChanged) {
+      continue;
+    }
+
+    await fileManager.renameFile(pendingTarget, targetPath);
+    return targetContent;
+  }
+
+  throw new Error("元の日記が繰り返し編集されたため、持ち越しを完了できませんでした。");
 }
 
 function findLatestDailyFile(
