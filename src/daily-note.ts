@@ -215,16 +215,15 @@ function parseTaskNodes(lines: string[]): Map<number, TodoNode> {
     stack.push(node);
   });
 
-  roots.forEach(evaluateNode);
+  roots.forEach((root) => evaluateNode(root, false));
   return nodes;
 }
 
-function evaluateNode(node: TodoNode): void {
-  node.children.forEach(evaluateNode);
-  node.keepInSource =
-    node.status !== "pending" || node.children.some((child) => child.keepInSource);
-  node.keepInCarryover =
-    node.status === "pending" || node.children.some((child) => child.keepInCarryover);
+function evaluateNode(node: TodoNode, hasClosedAncestor: boolean): void {
+  const branchIsClosed = hasClosedAncestor || node.status !== "pending";
+  node.children.forEach((child) => evaluateNode(child, branchIsClosed));
+  node.keepInSource = branchIsClosed || node.children.some((child) => child.keepInSource);
+  node.keepInCarryover = !branchIsClosed;
 }
 
 function getTodoStatus(marker: string): TodoStatus {
