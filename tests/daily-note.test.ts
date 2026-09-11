@@ -41,7 +41,7 @@ describe("projectDailyNote", () => {
     expect(result.sections.todo).toBe("- [ ] 継続");
   });
 
-  it("does not carry unfinished descendants of a completed task", () => {
+  it("carries unfinished descendants without their completed parent", () => {
     const source = [
       "# TODO",
       "- [ ] upoc",
@@ -51,8 +51,12 @@ describe("projectDailyNote", () => {
 
     const result = projectDailyNote(source);
 
-    expect(result.sourceContent).toBe(source.replace("- [ ] upoc", "- [x] upoc"));
-    expect(result.sections.todo).toBe("- [ ] upoc");
+    expect(result.sourceContent).toBe(
+      ["# TODO", "- [x] upoc", "\t- [x] https://github.com/firecrawl/pdf-inspector pdf"].join("\n"),
+    );
+    expect(result.sections.todo).toBe(
+      ["- [ ] upoc", "\t- [ ] https://x.com/KINOCOAI/status/2095064905510727965?s=20"].join("\n"),
+    );
   });
 
   it("keeps one parent line for multiple unfinished children", () => {

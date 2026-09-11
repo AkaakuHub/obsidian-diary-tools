@@ -12,9 +12,10 @@ export interface DailyNoteSections {
 type TodoStatus = "cancelled" | "done" | "pending";
 
 interface TodoNode {
+  carryoverIndentation: string;
   children: TodoNode[];
+  indentation: string;
   status: TodoStatus;
-  indent: number;
   keepInCarryover: boolean;
   keepInSource: boolean;
 }
@@ -125,11 +126,16 @@ function getCarryoverLines(lines: string[], taskNodes: Map<number, TodoNode>): s
     carryoverAfter ||= carryoverFlags[index];
   }
 
-  return lines.filter(
-    (line, index) =>
-      carryoverFlags[index] ||
-      (line.trim() === "" && hasCarryoverBefore[index] && hasCarryoverAfter[index]),
-  );
+  return lines.flatMap((line, index) => {
+    const taskNode = taskNodes.get(index);
+    if (taskNode?.keepInCarryover) {
+      return [`${taskNode.carryoverIndentation}${line.slice(taskNode.indentation.length)}`];
+    }
+    if (line.trim() === "" && hasCarryoverBefore[index] && hasCarryoverAfter[index]) {
+      return [line];
+    }
+    return [];
+  });
 }
 
 function projectSections(lines: string[]): DailyNoteSections {
@@ -194,15 +200,19 @@ function parseTaskNodes(lines: string[]): Map<number, TodoNode> {
     }
 
     const node: TodoNode = {
+      carryoverIndentation: match[1],
       children: [],
+      indentation: match[1],
       status: getTodoStatus(match[2]),
-      indent: match[1].length,
       keepInCarryover: false,
       keepInSource: false,
     };
     nodes.set(lineNumber, node);
 
-    while (stack.length > 0 && stack[stack.length - 1].indent >= node.indent) {
+    while (
+      stack.length > 0 &&
+      stack[stack.length - 1].indentation.length >= node.indentation.length
+    ) {
       stack.pop();
     }
 
@@ -215,15 +225,36 @@ function parseTaskNodes(lines: string[]): Map<number, TodoNode> {
     stack.push(node);
   });
 
-  roots.forEach((root) => evaluateNode(root, false));
+  roots.forEach(evaluateNode);
+  roots.forEach((root) =>
+    assignCarryoverIndentation(root, null, root.indentation, root.indentation),
+  );
   return nodes;
 }
 
-function evaluateNode(node: TodoNode, hasClosedAncestor: boolean): void {
-  const branchIsClosed = hasClosedAncestor || node.status !== "pending";
-  node.children.forEach((child) => evaluateNode(child, branchIsClosed));
-  node.keepInSource = branchIsClosed || node.children.some((child) => child.keepInSource);
-  node.keepInCarryover = !branchIsClosed;
+function evaluateNode(node: TodoNode): void {
+  node.children.forEach(evaluateNode);
+  node.keepInSource =
+    node.status !== "pending" || node.children.some((child) => child.keepInSource);
+  node.keepInCarryover = node.status === "pending";
+}
+
+function assignCarryoverIndentation(
+  node: TodoNode,
+  carriedAncestor: TodoNode | null,
+  rootIndentation: string,
+  parentIndentation: string,
+): void {
+  let nextCarriedAncestor = carriedAncestor;
+  if (node.keepInCarryover) {
+    node.carryoverIndentation = carriedAncestor
+      ? `${carriedAncestor.carryoverIndentation}${node.indentation.slice(parentIndentation.length)}`
+      : rootIndentation;
+    nextCarriedAncestor = node;
+  }
+  node.children.forEach((child) =>
+    assignCarryoverIndentation(child, nextCarriedAncestor, rootIndentation, node.indentation),
+  );
 }
 
 function getTodoStatus(marker: string): TodoStatus {
